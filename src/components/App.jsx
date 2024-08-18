@@ -1,155 +1,77 @@
-import { Component } from 'react';
-import { Notify } from 'notiflix/build/notiflix-notify-aio';
-import { fetchPhoto, onFetchError } from './service/api';
+import React, { Component } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
-import { AppStyle } from './App.styled';
 import { ImageGallery } from './ImageGallery/ImageGallery';
-import { Button } from './Button/Button';
-import { Loader } from './Loader/Loader';
-import { Modal } from './Modal/Modal';
-
-export const paramsForNotify = {
-  position: 'center-center',
-  timeout: 3000,
-  width: '400px',
-  fontSize: '24px',
-};
-const perPage = 12;
 
 export class App extends Component {
-  state = {
-    search: '',
-    photos: [],
-    page: 1,
-    loading: false,
-    btnLoadMore: false,
-    showModal: false,
-    selectedPhoto: null,
-  };
+  constructor(props) {
+    super(props);
 
-  componentDidUpdate(_, prevState) {
-    const prevSearch = prevState.search;
-    const prevPage = prevState.page;
-    const newSearch = this.state.search;
-    const newPage = this.state.page;
+    this.state = {
+      query: '',
+      images: [],
+      page: 1,
+      perPage: 12,
+      isLoading: false,
+      totalImages: 0,
+    };
+  }
 
-    if (prevSearch !== newSearch || prevPage !== newPage) {
-      this.addPhotoPage(newSearch, newPage);
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.query !== prevState.query ||
+      this.state.page !== prevState.page
+    ) {
+      this.fetchImages();
     }
   }
 
-  addPhotoPage = (search, page) => {
-    this.setState({ loading: true });
-
-    fetchPhoto(search, page, perPage)
-      .then(data => {
-        const { totalHits } = data;
-        const totalPage = Math.ceil(data.totalHits / perPage);
-        if (totalHits === 0) {
-          return Notify.failure(
-            'Sorry, there are no images matching your search query. Please try again.',
-            paramsForNotify
-          );
-        }
-
-        const arrPhotos = data.hits.map(
-          ({ id, webformatURL, largeImageURL, tags }) => ({
-            id,
-            webformatURL,
-            largeImageURL,
-            tags,
-          })
-        );
-
-        this.setState(prevState => ({
-          photos: [...prevState.photos, ...arrPhotos],
-        }));
-
-        if (totalPage > page) {
-          this.setState({ btnLoadMore: true });
-        } else {
-          Notify.info(
-            "We're sorry, but you've reached the end of search results.",
-            paramsForNotify
-          );
-          this.setState({ btnLoadMore: false });
-        }
-      })
-      .catch(onFetchError)
-      .finally(() => {
-        this.setState({ loading: false });
-      });
+  handleSearch = query => {
+    this.setState({ query, images: [], page: 1, totalImages: 0 });
   };
 
-  onClickRender = () => {
-    this.setState(({ page }) => ({ page: page + 1 }));
-  };
-
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
+  handleLoadMore = () => {
+    this.setState(prevState => ({
+      page: prevState.page + 1,
     }));
   };
 
-  onClickOpenModal = event => {
-    const { photos } = this.state;
-    const imageId = event.target.getAttribute('data-id');
-    const selectedPhoto = photos.find(photo => photo.id === Number(imageId));
-    this.setState({ selectedPhoto });
+  fetchImages = () => {
+    const { query, page, perPage } = this.state;
+    const apiKey = '41687911-62b9e6d772891b12bf67d3c73';
+    const apiUrl = `https://pixabay.com/api/?q=${query}&page=${page}&key=${apiKey}&image_type=photo&orientation=horizontal&per_page=${perPage}`;
 
-    this.toggleModal();
-  };
+    this.setState({ isLoading: true });
 
-  onSubmitSearchBar = event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const searchValue = form.search.value
-      .trim()
-      .toLowerCase()
-      .split(' ')
-      .join('+');
-
-    if (searchValue === '') {
-      Notify.info('Enter your request, please!', paramsForNotify);
-      return;
-    }
-
-    if (searchValue === this.state.search) {
-      Notify.info('Enter new request, please!', paramsForNotify);
-      return;
-    }
-
-    this.setState({
-      search: searchValue,
-      page: 1,
-      photos: [],
-    });
-
-    // form.reset();
+    fetch(apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        this.setState(prevState => ({
+          images: [...prevState.images, ...data.hits],
+          totalImages: data.total,
+          isLoading: false,
+        }));
+      })
+      .catch(error => {
+        console.error('Error fetching images:', error);
+        this.setState({ isLoading: false });
+      });
   };
 
   render() {
-    const { loading, photos, btnLoadMore, showModal, selectedPhoto } =
-      this.state;
+    const { perPage, query, images, isLoading, totalImages, page } = this.state;
 
     return (
       <div>
-        <h1>Image finder</h1>
-        <Searchbar onSubmitSearchBar={this.onSubmitSearchBar} />
-        {loading && <Loader />}
-        {/* {error && <h2>Error</h2>} */}
-        <AppStyle>
-          <ImageGallery
-            photos={photos}
-            onClickImageItem={this.onClickOpenModal}
-          />
-        </AppStyle>
-        {photos.length !== 0 && btnLoadMore && (
-          <Button onClickRender={this.onClickRender} />
-        )}
-        {showModal && (
-          <Modal selectedPhoto={selectedPhoto} onClose={this.toggleModal} />
-        )}
+        <Searchbar onSubmit={this.handleSearch} />
+        <ImageGallery
+          query={query}
+          page={page}
+          perPage={perPage}
+          images={images}
+          isLoading={isLoading}
+          totalImages={totalImages}
+          onLoadMore={this.handleLoadMore}
+        />
       </div>
     );
   }

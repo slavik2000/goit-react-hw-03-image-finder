@@ -1,14 +1,8 @@
-import { ButtonStyle, WrapperButton } from './Button.styled';
-import PropTypes from 'prop-types';
+import React from 'react';
+import css from './Button.module.css';
 
-export const Button = ({ onClickRender }) => (
-  <WrapperButton>
-    <ButtonStyle type="button" onClick={onClickRender}>
-      Load more
-    </ButtonStyle>
-  </WrapperButton>
+export const Button = ({ onClick }) => (
+  <button type="button" className={css.Button} onClick={onClick}>
+    Load more
+  </button>
 );
-
-Button.propTypes = {
-  onClickRender: PropTypes.func.isRequired,
-};

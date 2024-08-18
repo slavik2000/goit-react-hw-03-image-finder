@@ -1,53 +1,36 @@
-import { ModalStyle, Overlay } from './Modal.styled';
-import { createPortal } from 'react-dom';
-import { Component } from 'react';
-import PropTypes from 'prop-types';
-
-const modalRoot = document.querySelector('#modal-root');
+import React, { Component } from 'react';
+import css from './Modal.module.css';
 
 export class Modal extends Component {
-  static propTypes = {
-    onClose: PropTypes.func.isRequired,
-    selectedPhoto: PropTypes.shape({
-      id: PropTypes.number.isRequired,
-      largeImageURL: PropTypes.string.isRequired,
-      webformatURL: PropTypes.string.isRequired,
-      tags: PropTypes.string.isRequired,
-    }).isRequired,
-  };
+  componentDidMount() {
+    window.addEventListener('keydown', this.handleKeyDown);
+  }
 
-  componentDidMount = () => {
-    window.addEventListener('keydown', this.onEscapeCloseModal);
-  };
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this.handleKeyDown);
+  }
 
-  componentWillUnmount = () => {
-    window.removeEventListener('keydown', this.onEscapeCloseModal);
-  };
-
-  onEscapeCloseModal = event => {
-    if (event.code === 'Escape') {
+  handleKeyDown = (e) => {
+    if (e.code === 'Escape') {
       this.props.onClose();
     }
   };
 
-  onClickOverlay = event => {
-    if (event.target === event.currentTarget) {
+  handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
       this.props.onClose();
     }
   };
 
   render() {
-    const {
-      selectedPhoto: { largeImageURL, tags },
-    } = this.props;
+    const { imageUrl, altText } = this.props;
 
-    return createPortal(
-      <Overlay onClick={this.onClickOverlay}>
-        <ModalStyle>
-          <img src={largeImageURL} alt={tags} />
-        </ModalStyle>
-      </Overlay>,
-      modalRoot
+    return (
+      <div className={css.Overlay} onClick={this.handleOverlayClick}>
+        <div className={css.Modal}>
+          <img src={imageUrl} alt={altText} />
+        </div>
+      </div>
     );
   }
 }
